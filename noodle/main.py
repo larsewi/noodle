@@ -14,8 +14,8 @@ NOODLE_HEADER = """
 
  ------------------------------------------------------------------------------
 |                                                                              |
-|   Why did the Rebel Alliance hire a top-notch encryption expert to protect   |
-|   their data from the Empire?                                                |
+|   Why did the Rebel Alliance use Noodle to protect their data from the       |
+|   Empire?                                                                    |
 |                                                                              |
 |   Because they wanted to make sure their plans for defeating the Dark Side   |
 |   didn't end up on the Dark Web!                                             |
