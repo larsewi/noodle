@@ -1,0 +1,2 @@
+# Noodle
+Simple secret management
