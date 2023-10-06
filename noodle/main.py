@@ -1,5 +1,6 @@
 import logging as log
 from arguments import parse_args
+import prompter
 
 
 NOODLE_HEADER = """
@@ -34,3 +35,5 @@ def main():
     )
     if "action" in args:
         args.action(args)
+    else:
+        prompter.select("What's up?", ["Hanging out", "Chilling", "Not much..."])
