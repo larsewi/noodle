@@ -13,14 +13,16 @@ def parse_args():
     subparsers = parser.add_subparsers(title="commands")
 
     encrypt = subparsers.add_parser("encrypt", help="encrypt a message")
-    encrypt.set_defaults(action=lambda _: commands.encrypt())
+    encrypt.add_argument("--file", default=None, metavar="PATH", help="file to encrypt (or - for stdin)")
+    encrypt.set_defaults(action=lambda args: commands.encrypt(args.file))
 
     decrypt = subparsers.add_parser("decrypt", help="decrypt a message")
-    decrypt.set_defaults(action=lambda _: commands.decrypt())
+    decrypt.add_argument("--file", default=None, metavar="PATH", help="file to decrypt (or - for stdin)")
+    decrypt.set_defaults(action=lambda args: commands.decrypt(args.file))
 
-    decrypt = subparsers.add_parser("recipient", help="manage recipient")
-    decrypt.add_argument("--add", nargs="+", metavar="USER", help="add recipient")
-    decrypt.add_argument("--remove", nargs="+", metavar="USER", help="remove recipient")
-    decrypt.set_defaults(action=lambda _: commands.decrypt())
+    recipient = subparsers.add_parser("recipient", help="manage recipient")
+    recipient.add_argument("--add", nargs="+", metavar="USER", help="add recipient")
+    recipient.add_argument("--remove", nargs="+", metavar="USER", help="remove recipient")
+    recipient.set_defaults(action=lambda _: commands.decrypt())
 
     return parser.parse_args()
