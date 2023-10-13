@@ -1,14 +1,16 @@
 import sys
 import subprocess
 import logging as log
+import prompter
 
-def encrypt(filename):
+def encrypt(filename=None):
     print("encrypt")
 
 
-def decrypt(filename):
+def decrypt(filename=None):
     if filename is None:
-        # Open file picker
+        filename = prompter.file_picker("What file do you want to decrypt?", ".")
+        print(filename)
         assert False
 
     if filename == "-":
@@ -24,5 +26,5 @@ def decrypt(filename):
     print(process.stdout)
 
 
-def recipient():
+def access():
     print("recipient")

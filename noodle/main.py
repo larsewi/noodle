@@ -1,6 +1,7 @@
 import logging as log
 from arguments import parse_args
 import prompter
+import commands
 
 
 NOODLE_HEADER = """
@@ -33,7 +34,16 @@ def main():
         format="%(levelname)8s: %(message)s",
         level=log.DEBUG if args.debug else log.INFO,
     )
+
+    actions = {
+        "encrypt a file": (lambda: commands.encrypt()),
+        "decrypt a file": (lambda: commands.decrypt()),
+        "manage user access": (lambda: commands.access()),
+    }
+
     if "action" in args:
         args.action(args)
     else:
-        prompter.select("What's up?", ["Hanging out", "Chilling", "Not much..."])
+        action = prompter.select("What do you want to do?", actions.keys())
+        if action:
+            actions[action]()
