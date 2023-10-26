@@ -62,12 +62,18 @@ def select(prompt, choices):
     return choice
 
 
-def file_picker(prompt, dir, extension=None):
+def file_picker(prompt, dir, include=None, exclude=None):
     entries = os.scandir(dir)
     dirs = [f"{entry.name}/" for entry in entries if entry.is_dir()]
-    files = [
-        entry.name for entry in entries if os.path.splitext(entry.name)[-1] == extension
-    ]
+    files = []
+    for entry in entries:
+        name = entry.name
+        extension = os.path.splitext(name)[-1]
+        if exclude and extension not in exclude:
+            continue
+        if include and extension in include:
+            files.append(name)
+
     filename = select(prompt, sorted([".."] + dirs + files))
     if filename is None:
         return None
