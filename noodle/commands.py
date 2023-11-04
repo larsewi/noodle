@@ -5,6 +5,16 @@ import logging as log
 import prompter
 
 
+def add():
+    pass
+
+def remove():
+    pass
+
+def edit():
+    pass
+
+
 def _xxcrypt(method, infile):
     assert method in ("encrypt", "decrypt")
 
