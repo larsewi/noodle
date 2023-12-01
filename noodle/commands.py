@@ -3,71 +3,77 @@ import sys
 import subprocess
 import logging as log
 import prompter
+import glob
 
 
-def add():
-    pass
-
-def remove():
-    pass
-
-def edit():
-    pass
-
-
-def _xxcrypt(method, infile):
-    assert method in ("encrypt", "decrypt")
-
-    if infile is None:
-        include = [".gpg"] if method == "decrypt" else []
-        exclude = [".gpg"] if method == "encrypt" else []
-        infile = prompter.file_picker(
-            f"What file do you want to {method}?", ".", include, exclude
-        )
-        if infile is None:
-            log.info(f"Aborted {method}ion: No file picked")
-            return
-    assert infile is not None
-
-    if method == "encrypt":
-        outfile = f"{infile}.gpg"
-    elif filename.endswith(".gpg"):
-        outfile = filename[: -len(".gpg")]
-    else:
-        log.error("Aborted decryption: Expected '.gpg' extension")
-        return
-
-    log.debug(f"{method}ing '{infile}'")
-    args = ["gpg", f"--{method}='{infile}'"]
+def _execute(command):
+    log.debug(f"Executing command: {' '.join(command)}")
     process = subprocess.run(
-        args,
+        command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         encoding="ascii",
     )
-
     if process.returncode != 0:
-        log.error(f"Failed to {method} {infile}")
-    log.debug(process.stderr)
-
-    log.debug(f"Writing {method}ed data to file {outfile}")
-    with open(outfile, "w") as f:
-        f.write(process.stdout)
-
-    log.debug(f"Deleting input file {input}")
-    os.remove(infile)
+        log.error(f"Command '{' '.join(command)}' failed: {process.stderr}")
+        exit(1)
+    if process.stderr:
+        log.debug(process.stderr)
+    return process.stdout
 
 
-def encrypt(filename=None):
-    _xxcrypt("encrypt", filename)
+def _registry(work_dir="."):
+    rebels = glob.glob(os.path.join(work_dir, ".pub-keys", "*.asc"))
+    for rebel in rebels:
+        stdout = _execute(["gpg", "--show-keys", "--with-colons", rebel])
+        records = stdout.splitlines()
+        user_id = None
+        fingerprint = None
+        for record in records:
+            record = record.split(":")
+            if record[0] == "uid":
+                user_id = record[9]
+            elif record[0] == "fpr":
+                fingerprint = record[9]
+        if user_id is not None and fingerprint is not None:
+            yield (user_id, fingerprint)
 
 
-def decrypt(filename=None):
-    _xxcrypt("decrypt", filename)
+def registry(work_dir="."):
+    for rebel in _registry(work_dir=work_dir):
+        print(*rebel)
 
 
-def access():
-    print("recipient")
+def encrypt(filename=None, recipients=None, work_dir="."):
+    if filename is None:
+        filename = prompter.file_picker(
+            f"What file do you want to encrypt?", dir=work_dir, exclude=[".gpg"]
+        )
+        if filename is None:
+            log.info(f"Aborted encryption: No file picked")
+            return
+    assert filename is not None
+
+    if recipients is None:
+        pass
+
+    source = os.path.join(work_dir, filename)
+    dest = f"{source}.gpg"
+
+    log.debug(f"Encrypting file '{source}'")
+    stdout = _execute(["gpg", f"--encrypt='{source}'"])
+
+    log.debug(f"Writing encrypted data to file '{dest}'")
+    with open(f"{dest}", "w") as f:
+        f.write(stdout)
+
+    log.debug(f"Deleting input file {source}")
+    os.remove(source)
+    return 0
+
+
+def decrypt(filename=None, work_dir="."):
+    pass
 
 
 def joke():

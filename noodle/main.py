@@ -2,19 +2,7 @@ import logging as log
 from arguments import parse_args
 import prompter
 import commands
-
-
-NOODLE_HEADER = """
-     _   _                 _ _
-    | \ | |               | | |
-    |  \| | ___   ___   __| | | ___
-    | . ` |/ _ \ / _ \ / _` | |/ _ \\
-    | |\  | (_) | (_) | (_| | |  __/
-    |_| \_|\___/ \___/ \__,_|_|\___|
-
-      *** Rebel secret manager ***
-
-"""
+from utils import NOODLE_HEADER
 
 
 def main():
@@ -26,9 +14,9 @@ def main():
     )
 
     actions = {
-        "encrypt a file": (lambda: commands.encrypt()),
-        "decrypt a file": (lambda: commands.decrypt()),
-        "manage user access": (lambda: commands.access()),
+        "encrypt a file": (lambda: commands.encrypt(work_dir=args.work_dir)),
+        "decrypt a file": (lambda: commands.decrypt(work_dir=args.work_dir)),
+        "list registry": (lambda: commands.registry(work_dir=args.work_dir)),
         "tell me a joke": (lambda: commands.joke()),
     }
 
