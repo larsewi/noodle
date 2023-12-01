@@ -55,7 +55,14 @@ def encrypt(filename=None, recipients=None, work_dir="."):
     assert filename is not None
 
     if recipients is None:
-        pass
+        recipients = prompter.multi_select(
+            f"What rebels should be able to decrypt the file?",
+            choices=["one", "two", "three"],
+            ticked=["two"],
+        )
+        for rebel in recipients:
+            print(rebel)
+        exit(0)
 
     source = os.path.join(work_dir, filename)
     dest = f"{source}.gpg"

@@ -69,7 +69,7 @@ def select(prompt, choices):
     return choice
 
 
-def multi_select(prompt, choices):
+def multi_select(prompt, choices, ticked=[]):
     try:
         stdscr = initscr()
         noecho()
@@ -79,8 +79,10 @@ def multi_select(prompt, choices):
 
         highlight = 0
         filter = ""
-        filtered = list(choices)
-        choice = None
+
+        selected = sorted(choice for choice in choices if choice in ticked)
+        unselected = sorted(choice for choice in choices if choice not in ticked)
+        filtered = selected + unselected
 
         while True:
             # Draw menu
@@ -96,10 +98,10 @@ def multi_select(prompt, choices):
             for i in range(len(filtered)):
                 if highlight == i:
                     attron(A_REVERSE)
-                    mvaddstr(offset, 0, "> %s" % filtered[i])
+                choice = filtered[i]
+                mvaddstr(offset, 0, f"[{'x' if choice in ticked else ' '}] {choice}")
+                if highlight == i:
                     attroff(A_REVERSE)
-                else:
-                    mvaddstr(offset, 0, "  %s" % filtered[i])
                 offset += 1
             refresh()
 
@@ -113,29 +115,46 @@ def multi_select(prompt, choices):
                 highlight = (highlight + 1) % len(filtered)
             elif ch in (KEY_CODE_ENT, KEY_RIGHT):
                 # Select highlighted
-                if len(filtered) > 0:
-                    choice = filtered[highlight]
-                    break
+                break
             elif ch in (KEY_CODE_ESC, KEY_CODE_EOF, KEY_LEFT):
                 # Cancel selection
-                break
+                return None
             elif chr(ch) in string.printable or ch == KEY_CODE_DEL:
-                # Filter results
-                filter = filter[:-1] if ch == KEY_CODE_DEL else filter + chr(ch)
-                highlight = 0
-                filtered = [c for c in choices if c.lower().startswith(filter.lower())]
+                if chr(ch) == " " and len(filtered) > 0:
+                    # Select
+                    choice = filtered[highlight]
+                    if choice in ticked:
+                        ticked.remove(choice)
+                    else:
+                        ticked.append(choice)
+                else:
+                    # Filter results
+                    filter = filter[:-1] if ch == KEY_CODE_DEL else filter + chr(ch)
+                    highlight = 0
+
+                    filtered = sorted(
+                        c for c in choices if c.lower().startswith(filter.lower())
+                    )
+                    selected = sorted(choice for choice in filtered if choice in ticked)
+                    unselected = sorted(
+                        choice for choice in filtered if choice not in ticked
+                    )
+                    filtered = selected + unselected
     finally:
         endwin()
 
-    return choice
+    return ticked
 
 
 def file_picker(prompt, dir, include=None, exclude=None):
     entries = os.scandir(dir)
-    dirs = [f"{entry.name}/" for entry in entries if entry.is_dir()]
+    dirs = []
     files = []
     for entry in entries:
         name = entry.name
+        if entry.is_dir():
+            dirs.append(f"{name}/")
+            continue
         extension = os.path.splitext(name)[-1]
         if exclude and extension in exclude:
             continue
