@@ -8,6 +8,7 @@ rm -rf tests/out
 echo "Generating public key for alice"
 export GNUPGHOME=tests/out/alice/
 mkdir -p $GNUPGHOME
+chmod 700 $GNUPGHOME
 gpg --yes \
     --batch \
     --pinentry-mode loopback \
@@ -23,6 +24,7 @@ gpg --armor --export alice > tests/out/.pub-keys/alice.asc
 echo "Generating public key for bob"
 export GNUPGHOME=tests/out/bob/
 mkdir -p $GNUPGHOME
+chmod 700 $GNUPGHOME
 gpg --yes \
     --batch \
     --pinentry-mode loopback \

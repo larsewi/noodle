@@ -22,10 +22,18 @@ def _execute(command):
     return process.stdout
 
 
+def _check_result(command):
+    try:
+        subprocess.check_call(command + [">/dev/null 2>&1"])
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
 def _registry(work_dir="."):
-    rebels = glob.glob(os.path.join(work_dir, ".pub-keys", "*.asc"))
-    for rebel in rebels:
-        stdout = _execute(["gpg", "--show-keys", "--with-colons", rebel])
+    files = glob.glob(os.path.join(work_dir, ".pub-keys", "*.asc"))
+    for file in files:
+        stdout = _execute(["gpg", "--show-keys", "--with-colons", file])
         records = stdout.splitlines()
         user_id = None
         fingerprint = None
@@ -36,7 +44,7 @@ def _registry(work_dir="."):
             elif record[0] == "fpr":
                 fingerprint = record[9]
         if user_id is not None and fingerprint is not None:
-            yield (user_id, fingerprint)
+            yield (user_id, fingerprint, os.path.basename(file))
 
 
 def registry(work_dir="."):
@@ -45,6 +53,7 @@ def registry(work_dir="."):
 
 
 def encrypt(filename=None, recipients=None, work_dir="."):
+    # Select file to encrypt
     if filename is None:
         filename = prompter.file_picker(
             f"What file do you want to encrypt?", dir=work_dir, exclude=[".gpg"]
@@ -54,21 +63,43 @@ def encrypt(filename=None, recipients=None, work_dir="."):
             return
     assert filename is not None
 
+    # Get rebels in registry
+    rebels = [" ".join(rebel) for rebel in list(_registry(work_dir=work_dir))]
+    if rebels is None:
+        log.info(
+            f"Aborted encryption: No rebels present in '{os.path.join(work_dir, '.pub-keys')}'"
+        )
+        return
+
+    # Select rebels to encrypt for
     if recipients is None:
         recipients = prompter.multi_select(
             f"What rebels should be able to decrypt the file?",
-            choices=["one", "two", "three"],
-            ticked=["two"],
+            choices=rebels,
         )
-        for rebel in recipients:
-            print(rebel)
-        exit(0)
+
+    # Check that rebels are in the keyring
+    for recipient in recipients:
+        if not _check_result(["gpg", f"--list-keys={recipient[1]}"]):
+            log.info(f"Adding missing recipient {recipient[1]}")
+            _execute(["gpg", f"--import={recipient[2]}"])
+
+    recipient_files = (
+        os.path.join(work_dir, ".pub-keys", rebel.split(" ")[-1])
+        for rebel in recipients
+    )
 
     source = os.path.join(work_dir, filename)
     dest = f"{source}.gpg"
 
     log.debug(f"Encrypting file '{source}'")
-    stdout = _execute(["gpg", f"--encrypt='{source}'"])
+    stdout = _execute(
+        [
+            "gpg",
+            f"--encrypt='{source}'",
+            f"--hidden-recipient-file={','.join(recipient_files)}",
+        ]
+    )
 
     log.debug(f"Writing encrypted data to file '{dest}'")
     with open(f"{dest}", "w") as f:
