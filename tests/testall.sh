@@ -1,34 +1,41 @@
 set -e
 set -x
 
-# Clean-up
-rm -rf $GNUPGHOME
-rm -rf tests/.pub-keys
-rm -f tests/secret.txt
+rm -rf tests/out
 
-# Generate public keys
-export GNUPGHOME=tests/.gnupg
+########################################
+
+echo "Generating public key for alice"
+export GNUPGHOME=tests/out/alice/
+mkdir -p $GNUPGHOME
 gpg --yes \
     --batch \
     --pinentry-mode loopback \
     --passphrase '' \
     --quick-generate alice ed25519 default
+
+echo "Exporting public key for alice"
+mkdir -p tests/out/.pub-keys
+gpg --armor --export alice > tests/out/.pub-keys/alice.asc
+
+########################################
+
+echo "Generating public key for bob"
+export GNUPGHOME=tests/out/bob/
+mkdir -p $GNUPGHOME
 gpg --yes \
     --batch \
     --pinentry-mode loopback \
     --passphrase '' \
     --quick-generate bob ed25519 default
 
-# Export public keys
-mkdir -p tests/.pub-keys
-gpg --armor --export alice > tests/.pub-keys/alice.asc
-gpg --armor --export bob > tests/.pub-keys/bob.asc
+echo "Exporting public key for alice"
+mkdir -p tests/out/.pub-keys
+gpg --armor --export bob > tests/out/.pub-keys/bob.asc
 
-echo "This is a secret" > tests/secret.txt
+########################################
+
+echo "Creating a rebel secret"
+echo "This is a rebel secret" > tests/out/secret.txt
 
 # python3 noodle encrypt --file tests/secret.txt
-
-# Clean-up
-rm -rf $GNUPGHOME
-rm -rf tests/.pub-keys
-rm -f tests/secret.txt
