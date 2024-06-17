@@ -1,9 +1,9 @@
 import os
-import sys
 import subprocess
 import logging as log
 import prompter
 import glob
+import gnupg
 
 
 def _execute(command):
@@ -13,21 +13,25 @@ def _execute(command):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         encoding="ascii",
+        env=os.environ
     )
     if process.returncode != 0:
-        log.error(f"Command '{' '.join(command)}' failed: {process.stderr}")
+        log.error(f"Command '{' '.join(command)}' failed:")
+        for line in process.stderr.splitlines():
+            log.error(line)
         exit(1)
     if process.stderr:
-        log.debug(process.stderr)
+        for line in process.stderr.splitlines():
+            log.debug(line)
     return process.stdout
 
 
 def _check_result(command):
     try:
-        subprocess.check_call(command + [">/dev/null 2>&1"])
+        subprocess.check_call(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii", env=os.environ)
+        return True
     except subprocess.CalledProcessError:
         return False
-    return True
 
 
 def _registry(work_dir="."):
@@ -47,59 +51,56 @@ def _registry(work_dir="."):
             yield (user_id, fingerprint, os.path.basename(file))
 
 
-def registry(work_dir="."):
-    for rebel in _registry(work_dir=work_dir):
-        print(*rebel)
+def encrypt(secret=None, recipients=None, work_dir="."):
+    gpg = gnupg.GPG()
 
-
-def encrypt(filename=None, recipients=None, work_dir="."):
     # Select file to encrypt
-    if filename is None:
-        filename = prompter.file_picker(
+    if secret is None:
+        secret = prompter.file_picker(
             f"What file do you want to encrypt?", dir=work_dir, exclude=[".gpg"]
         )
-        if filename is None:
+        if secret is None:
             log.info(f"Aborted encryption: No file picked")
             return
-    assert filename is not None
+    assert secret is not None
 
-    # Get rebels in registry
-    rebels = [" ".join(rebel) for rebel in list(_registry(work_dir=work_dir))]
-    if rebels is None:
-        log.info(
-            f"Aborted encryption: No rebels present in '{os.path.join(work_dir, '.pub-keys')}'"
-        )
-        return
+    files = glob.glob(os.path.join(work_dir, ".pub-keys", "*.asc"))
+    for file in files:
+        key = gpg.import_keys_file(file)
+        log.info(f"Imported keys {', '.join(key.fingerprints)} from file {file}")
 
-    # Select rebels to encrypt for
+    rebels = (x for x in gpg.list_keys())
+    for rebel in rebels:
+        print(rebel)
+
+    return
+
     if recipients is None:
         recipients = prompter.multi_select(
             f"What rebels should be able to decrypt the file?",
             choices=rebels,
         )
+    recipients = (x.split(' ') for x in recipients)
+
+
+    # Select rebels to encrypt for
 
     # Check that rebels are in the keyring
-    for recipient in recipients:
-        if not _check_result(["gpg", f"--list-keys={recipient[1]}"]):
-            log.info(f"Adding missing recipient {recipient[1]}")
-            _execute(["gpg", f"--import={recipient[2]}"])
+    command = ["gpg", "--encrypt", "--sign", "--armor"]
+    for name, fingerprint, filename in recipients:
+        if not _check_result(["gpg", "--list-keys", name]):
+            log.debug(f"Adding missing recipient {name} {fingerprint}")
+            path = os.path.join(work_dir, '.pub-keys/', filename)
+            _execute(["gpg", "--import", path])
+            _execute(["gpg", "--quick-sign-key", fingerprint, name])
+            command.extend(["-r", name])
 
-    recipient_files = (
-        os.path.join(work_dir, ".pub-keys", rebel.split(" ")[-1])
-        for rebel in recipients
-    )
-
-    source = os.path.join(work_dir, filename)
+    source = os.path.join(work_dir, secret)
+    command.append(source)
     dest = f"{source}.gpg"
 
-    log.debug(f"Encrypting file '{source}'")
-    stdout = _execute(
-        [
-            "gpg",
-            f"--encrypt='{source}'",
-            f"--hidden-recipient-file={','.join(recipient_files)}",
-        ]
-    )
+    log.info(f"Encrypting file '{source}'")
+    stdout = _execute(command)
 
     log.debug(f"Writing encrypted data to file '{dest}'")
     with open(f"{dest}", "w") as f:

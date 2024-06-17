@@ -40,4 +40,8 @@ gpg --armor --export bob > tests/out/.pub-keys/bob.asc
 echo "Creating a rebel secret"
 echo "This is a rebel secret" > tests/out/secret.txt
 
-# python3 noodle encrypt --file tests/secret.txt
+########################################
+
+echo "Encrypting secret for alice and bob"
+export GNUPGHOME=tests/out/alice/
+python3 noodle --work-dir tests/out --debug encrypt --file tests/secret.txt

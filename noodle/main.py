@@ -2,6 +2,7 @@ import logging as log
 from arguments import parse_args
 import prompter
 import commands
+import os
 from utils import NOODLE_HEADER
 
 
@@ -12,6 +13,9 @@ def main():
         format="%(levelname)8s: %(message)s",
         level=log.DEBUG if args.debug else log.INFO,
     )
+
+    GNUPGHOME = os.environ.get("GNUPGHOME", "None")
+    log.debug(f"GNUPGHOME='{os.environ['GNUPGHOME']}'")
 
     actions = {
         "encrypt a file": (lambda: commands.encrypt(work_dir=args.work_dir)),
